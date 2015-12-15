@@ -4,7 +4,8 @@ const request = require('request'),
   cheerio = require('cheerio'),
   Url = require('url'),
   Site = require('./models/Site'),
-  async = require('async')
+  async = require('async'),
+  _ = require('lodash')
 
 mongoose.connect('mongodb://localhost/startup-search-engine')
 
@@ -42,9 +43,12 @@ function spider(){
               if(link.indexOf('http') >= 0){
                 //hit the url
                 hit_url = link
-              }else{
+              }else if(link.startsWith('/')){
                 //create url and then hit
                 hit_url = `http://${site.domain}${link}`
+              }else{
+                //skip path
+                return nextLink()
               }
 
               capture(hit_url).then(function(res){
@@ -77,14 +81,14 @@ function capture(url){
   console.log('capturing', url)
   return new Promise( (resolve, reject) => {
     let parsed = Url.parse(url)
-    let domain = parsed.host,
+    let domain = parsed.hostname,
       path = parsed.path
 
     async.waterfall([
       function(done){
         //check blacklist
         if(blacklist){
-          let blacklisted = blacklist.some( site => site.domain == domain )
+          let blacklisted = blacklist.some( site => site == domain )
           if(blacklisted){
             done('blacklisted')
           }else{
@@ -92,7 +96,38 @@ function capture(url){
           }
         }else{
           Site.find({blacklist: true}, function(err, black){
-            blacklist = black
+            let domains = black.map( site => site.domain )
+            blacklist = _.uniq(domains.concat([ 'www.linkedin.com',
+              'plus.google.com',
+              'www.facebook.com',
+              'pbs.twimg.com',
+              'facebook.com',
+              'mars.nasa.govnews',
+              'mars.nasa.govmultimedia',
+              'mars.nasa.govparticipate',
+              'twitter.com',
+              'www.mozilla.org',
+              'instagram.com',
+              'accounts.google.com',
+              'pds.nasa.gov',
+              'eyes.nasa.gov',
+              't.co',
+              'www.twitter.com',
+              'addons.mozilla.org',
+              'itunes.apple.com',
+              'mars.nasa.gov..',
+              'www.youtube.com',
+              'www.business.ftc.gov',
+              'docs.google.com',
+              'mars.nasa.govmission',
+              'mars.nasa.govallmars',
+              'mars.nasa.gov.',
+              'mars.jpl.nasa.gov',
+              'mars.nasa.gov',
+              'earth.google.com',
+              'en.wikipedia.org',
+              'support.google.com' ]))
+            console.log(blacklist)
             let blacklisted = black.some( site => site.domain == domain )
             if(blacklisted){
               done('blacklisted')
@@ -132,18 +167,17 @@ function capture(url){
 
           let $ = cheerio.load(body)
 
-          let links = $('a'),
-            headers = $('h1, h2, h3, h4, h5, h6'),
-            paragraphs = $('p')
+          let links = $('a').map( (index, link) => $(link).attr('href') ).get(),
+            headers = $('h1, h2, h3, h4, h5, h6').map( (index, header) => $(header).text() ).get(),
+            paragraphs = $('p').map( (index, paragraph) => $(paragraph).text() ).get()
 
           let entry = {
             path: path,
             title: $('title').text(),
             description: $('meta[name=description]').attr('content'),
             content: {
-              links: links.map( (index, link) => $(link).attr('href') ).get(),
-              headers: headers.map( (index, header) => $(header).text() ).get(),
-              paragraphs: paragraphs.map( (index, paragraph) => $(paragraph).text() ).get()
+              links: _.uniq(links),
+              headers: _.uniq(headers)
             }
           }
 

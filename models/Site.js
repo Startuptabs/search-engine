@@ -9,8 +9,7 @@ const Path = new Schema({
   description: {type: String},
   content: {
     links: [{type: String, index: true}],
-    headers: [],
-    paragraphs: []
+    headers: [{type: String}],
   },
   created_at: {type: Date, default: Date.now }
 })
