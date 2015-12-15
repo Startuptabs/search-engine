@@ -126,7 +126,11 @@ function capture(url){
               'mars.nasa.gov',
               'earth.google.com',
               'en.wikipedia.org',
-              'support.google.com' ]))
+              'support.google.com',
+              'youtu.be',
+              'flickr.com',
+              'www.flickr.com'
+            ]))
             console.log(blacklist)
             let blacklisted = black.some( site => site.domain == domain )
             if(blacklisted){
@@ -167,7 +171,7 @@ function capture(url){
 
           let $ = cheerio.load(body)
 
-          let links = $('a').map( (index, link) => $(link).attr('href') ).get(),
+          let links = $('a').map( (index, link) => $(link).attr('href') ).get().filter( link => (link.startsWith('/') || link.startsWith('http'))),
             headers = $('h1, h2, h3, h4, h5, h6').map( (index, header) => $(header).text() ).get(),
             paragraphs = $('p').map( (index, paragraph) => $(paragraph).text() ).get()
 
